@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+// This route reads live data and must never be cached or statically optimized.
+export const dynamic = "force-dynamic";
+
 // Server-only client: the service-role key bypasses RLS. Never import this in client code.
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
