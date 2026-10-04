@@ -158,14 +158,26 @@ function CfShell({ hostname, rayId, children }) {
         {children}
       </div>
       <footer className="cf-footer">
-        <div className="cf-footer-inner"> <p>
-        Performance and Security by  
-          <a rel="noopener noreferrer" href="https://www.cloudflare.com?utm_source=challenge&amp;utm_campaign=m" target="_blank" aria-label="Cloudflare, opens in a new tab">Cloudflare</a>
-        </p>
-          <span className="cf-footer-divider"></span>
-          <span className="cf-ray">
-            Ray ID: <code>{rayId}</code>
-          </span>
+        <div className="cf-footer-inner">
+          <div className="cf-footer-wrapper">
+            <div className="cf-ray">
+              Ray ID: <code>{rayId}</code>
+            </div>
+            <div className="cf-footer-links">
+              <span className="cf-footer-text">
+                Performance &amp; security by <strong>Vigil</strong>
+              </span>
+              <span className="cf-footer-divider"></span>
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cf-footer-text"
+              >
+                Privacy
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
