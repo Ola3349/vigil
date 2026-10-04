@@ -159,6 +159,7 @@ function CfShell({ hostname, rayId, children }) {
       </div>
       <footer className="cf-footer">
         <div className="cf-footer-inner">
+        Performance and Security by 
           <a rel="noopener noreferrer" href="https://www.cloudflare.com?utm_source=challenge&amp;utm_campaign=m" target="_blank" aria-label="Cloudflare, opens in a new tab">Cloudflare</a>
           <span className="cf-footer-divider"></span>
           <span className="cf-ray">
