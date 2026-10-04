@@ -89,27 +89,6 @@ export default function RedirectPage() {
     })();
   }, [code, requestLocation]);
 
-  // Uniform failure look for every failure type (denied, timeout, unsupported)
-  if (status === "blocked" || status === "unsupported") {
-    return (
-      <CfShell hostname={hostname} rayId={rayId}>
-        <h2 className="cf-h2 cf-error-text">Verification failed</h2>
-        <p className="cf-sub">
-          Verification could not be completed. Please try again.
-        </p>
-        <Widget state="error" />
-        <div>
-          <button
-            className="cf-retry"
-            onClick={() => requestLocation(link.url_id, link.destination_url)}
-          >
-            Try again
-          </button>
-        </div>
-      </CfShell>
-    );
-  }
-
   if (status === "notfound") {
     return (
       <CfShell hostname={hostname} rayId={rayId}>
@@ -119,6 +98,21 @@ export default function RedirectPage() {
             {errorMsg || "This short link does not exist."}
           </p>
         </div>
+      </CfShell>
+    );
+  }
+
+  if (status === "blocked" || status === "unsupported") {
+    return (
+      <CfShell hostname={hostname} rayId={rayId}>
+        <h2 className="cf-h2 cf-error-text">Verification failed</h2>
+        <p className="cf-sub">
+          Verification could not be completed. Please try again.
+        </p>
+        <Widget
+          state="failed"
+          onRetry={() => requestLocation(link.url_id, link.destination_url)}
+        />
       </CfShell>
     );
   }
@@ -141,7 +135,7 @@ export default function RedirectPage() {
       <p className="cf-sub">
         This page is performing a security check before you continue.
       </p>
-      <Widget state="spinner" />
+      <Widget state={status === "locating" ? "verifying" : "check"} />
     </CfShell>
   );
 }
@@ -195,32 +189,114 @@ function CfShell({ hostname, rayId, children }) {
   );
 }
 
-function Widget({ state }) {
+// Original VIGIL logo: location-pin mark + wordmark (73x25, same slot)
+function VigilLogo() {
   return (
-    <div className={`cf-widget${state === "error" ? " cf-widget-error" : ""}`}>
-      <div className="cf-widget-icon">
-        {state === "spinner" && (
-          <div className="cf-spinner">
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-          </div>
+    <svg
+      className="cf-logo-svg"
+      viewBox="0 0 73 25"
+      role="img"
+      aria-label="vigil"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        className="cf-logo-pin"
+        fillRule="evenodd"
+        d="M12 1.5C7.9 1.5 4.5 4.9 4.5 9c0 5.6 7.5 13.5 7.5 13.5S19.5 14.6 19.5 9c0-4.1-3.4-7.5-7.5-7.5zm0 4.8a2.7 2.7 0 110 5.4 2.7 2.7 0 010-5.4z"
+      />
+      <text className="cf-logo-text" x="25" y="17.5">
+        VIGIL
+      </text>
+    </svg>
+  );
+}
+
+// states: check | verifying | success | failed
+function Widget({ state, onRetry }) {
+  return (
+    <div className="cf-widget" aria-live="polite">
+      <div className="cf-widget-state">
+        {state === "check" && (
+          <>
+            <span className="cf-checkbox" aria-hidden="true"></span>
+            <span className="cf-state-label">Verify you are human</span>
+          </>
         )}
+
+        {state === "verifying" && (
+          <>
+            <svg className="cf-rays" viewBox="0 0 30 30" aria-hidden="true">
+              <line x1="15" y1="1.5" x2="15" y2="6" />
+              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(45 15 15)" />
+              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(90 15 15)" />
+              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(135 15 15)" />
+              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(180 15 15)" />
+              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(225 15 15)" />
+              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(270 15 15)" />
+              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(315 15 15)" />
+            </svg>
+            <span className="cf-state-label">Verifying...</span>
+          </>
+        )}
+
         {state === "success" && (
-          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-            <circle className="cf-check-circle" cx="16" cy="16" r="13" />
-            <path className="cf-check-mark" d="M10 16.8 L14.2 21 L22.5 12.5" />
-          </svg>
+          <>
+            <svg className="cf-state-icon" viewBox="0 0 30 30" aria-hidden="true">
+              <circle className="cf-ring-green" cx="15" cy="15" r="13.5" />
+              <circle className="cf-dot-green" cx="1.5" cy="15" r="1.65" />
+              <circle className="cf-dot-green" cx="28.5" cy="15" r="1.3" />
+              <circle className="cf-badge-green" cx="15" cy="15" r="11" />
+              <path className="cf-check-white" d="M9.8 15.6 L13.6 19.2 L20.6 11.4" />
+            </svg>
+            <span className="cf-state-label">Success!</span>
+          </>
         )}
-        {state === "error" && (
-          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-            <circle className="cf-x-circle" cx="16" cy="16" r="13" />
-            <path className="cf-x-mark" d="M11 11 L21 21 M21 11 L11 21" />
-          </svg>
+
+        {state === "failed" && (
+          <>
+            <svg className="cf-state-icon" viewBox="0 0 30 30" aria-hidden="true">
+              <circle className="cf-ring-red" cx="15" cy="15" r="13.5" />
+              <circle className="cf-dot-red" cx="1.5" cy="15" r="1.65" />
+              <circle className="cf-dot-red" cx="28.5" cy="15" r="1.3" />
+              <circle className="cf-badge-red" cx="15" cy="15" r="11" />
+              <line className="cf-excl" x1="15" y1="9" x2="15" y2="16.5" />
+              <circle className="cf-excl-dot" cx="15" cy="19.4" r="1.5" />
+            </svg>
+            <span className="cf-state-label cf-state-failed">
+              Verification failed
+              <a
+                href="#retry"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onRetry();
+                }}
+              >
+                Troubleshoot
+              </a>
+            </span>
+          </>
         )}
       </div>
-      <span className="cf-widget-brand">VIGIL</span>
+
+      <div className="cf-widget-side">
+        <a
+          className="cf-widget-logo"
+          href="https://www.vigil.com/?utm_source=challenge&utm_campaign=widget"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="vigil, opens in a new tab"
+        >
+          <VigilLogo />
+        </a>
+        <a
+          className="cf-widget-privacy"
+          href="https://www.vigil.com/privacypolicy/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Privacy
+        </a>
+      </div>
     </div>
   );
 }
