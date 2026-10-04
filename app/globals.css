@@ -224,4 +224,55 @@ td.truncate { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
   .cf-badge-green { fill: #2db35e; }
   .cf-ring-red { stroke: #fc574a; }
   .cf-dot-red { fill: #fc574a; }
-  .cf-badge-red {
+  .cf-badge-red { fill: #fc574a; }
+  .cf-state-failed a { color: #f2f2f2; }
+  .cf-state-failed a:hover { color: #b9d6ff; }
+  .cf-widget-privacy { color: #9a9a9a; }
+  .cf-box { background: #222; border-color: #4a4a4a; }
+  .cf-box h2 { color: #f2f2f2; }
+  .cf-footer-inner { border-top-color: #4a4a4a; color: #b6b6b6; }
+  .cf-footer code { color: #f2f2f2; }
+  .cf-footer-divider { background: #4a4a4a; }
+}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .cf-checkbox, .cf-rays, .cf-badge-green, .cf-badge-red,
+  .cf-check-white { animation: none; }
+  .cf-check-white { stroke-dashoffset: 0; }
+}
+
+/* ==========================================================
+   Footer layout: Ray ID left, links right
+   ========================================================== */
+.cf-footer-wrapper {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; width: 100%;
+}
+.cf-footer-links {
+  display: flex; align-items: center; gap: 8px;
+}
+.cf-footer-text { font-size: 12px; color: #595959; }
+.cf-footer a { font-size: 12px; color: #595959; text-decoration: underline; }
+.cf-footer a:hover { color: #313131; }
+
+@media (prefers-color-scheme: dark) {
+  .cf-footer-text, .cf-footer a { color: #b6b6b6; }
+  .cf-footer a:hover { color: #f2f2f2; }
+}
+
+/* ==========================================================
+   VIGIL logo (widget brand column)
+   ========================================================== */
+.cf-logo-svg { width: 73px; height: 25px; display: block; }
+.cf-logo-pin { fill: #2563eb; }
+.cf-logo-text {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px; font-weight: 700; letter-spacing: 3px;
+  fill: #8a8a8a;
+}
+
+@media (prefers-color-scheme: dark) {
+  .cf-logo-pin { fill: #60a5fa; }
+  .cf-logo-text { fill: #9a9a9a; }
+}
