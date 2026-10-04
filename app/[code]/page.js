@@ -160,18 +160,29 @@ function CfShell({ hostname, rayId, children }) {
       <footer className="cf-footer">
         <div className="cf-footer-inner">
           <div className="cf-footer-wrapper">
-            <div className="cf-ray">
-              Ray ID: <code>{rayId}</code>
+            <div>
+              <div className="cf-ray">
+                Ray ID: <code>{rayId}</code>
+              </div>
             </div>
             <div className="cf-footer-links">
               <span className="cf-footer-text">
-                Performance &amp; security by <strong>Vigil</strong>
+                Performance and Security by{" "}
+                <a
+                  rel="noopener noreferrer"
+                  href="https://www.vigil.com/?utm_source=challenge&utm_campaign=m"
+                  target="_blank"
+                  aria-label="vigil, opens in a new tab"
+                >
+                  vigil
+                </a>
               </span>
               <span className="cf-footer-divider"></span>
               <a
-                href="/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
+                href="https://www.vigil.com/privacypolicy/"
+                aria-label="Privacy, opens in a new tab"
                 className="cf-footer-text"
               >
                 Privacy
