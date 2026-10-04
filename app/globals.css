@@ -224,3 +224,23 @@ td.truncate { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
   .cf-x-circle, .cf-x-mark { animation: none; }
   .cf-check-mark, .cf-x-mark { stroke-dashoffset: 0; }
 }
+
+/* ==========================================================
+   Failure retry button (Verification failed state)
+   ========================================================== */
+.cf-retry {
+  margin-top: 1rem;
+  padding: 8px 18px;
+  font-size: 14px;
+  color: #313131;
+  background: #f8f8f8;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.cf-retry:hover { background: #ececec; }
+
+@media (prefers-color-scheme: dark) {
+  .cf-retry { background: #222; color: #f2f2f2; border-color: #4a4a4a; }
+  .cf-retry:hover { background: #2c2c2c; }
+}
