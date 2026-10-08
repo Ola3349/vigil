@@ -9,49 +9,56 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
-    setNotice("");
     setLoading(true);
-
     const { data, error } = await supabase.auth.signUp({ email, password });
-
-    // Debug logging (safe to remove later): shows which project and what came back
-    console.log("Supabase host:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log("signUp result:", {
-      userId: data?.user?.id,
-      identities: data?.user?.identities?.length,
-      hasSession: !!data?.session,
-      error: error?.message,
-    });
-
     setLoading(false);
     if (error) return setError(error.message);
-    if (data.session) router.push("/");
-    else setNotice("Account created. Check your email to confirm it, then log in.");
+    if (data.session) {
+      router.push("/dashboard");
+    } else {
+      setNeedsConfirmation(true);
+    }
+  }
+
+  if (needsConfirmation) {
+    return (
+      <div className="page-shell">
+        <div className="panel panel-auth">
+          <h1 className="panel-title">Confirm your email</h1>
+          <p className="panel-sub">
+            We sent a confirmation link to <strong>{email}</strong>. Click it, then return to log in.
+          </p>
+          <Link href="/login" className="btn-primary btn-block" style={{ textAlign: "center" }}>
+            Back to login
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container">
-      <div className="card">
-        <h1>Sign up</h1>
-        <form onSubmit={handleSubmit} className="auth-form">
-          <input type="email" placeholder="Email" value={email}
+    <div className="page-shell">
+      <div className="panel panel-auth">
+        <h1 className="panel-title">Initiate Access</h1>
+        <p className="panel-sub">Create your HEIMDELL account.</p>
+        <form onSubmit={handleSubmit} className="stack">
+          <input type="email" className="input-neon" placeholder="Email" value={email}
             onChange={(e) => setEmail(e.target.value)} required />
-          <input type="password" placeholder="Password (min 6 characters)" value={password}
-            onChange={(e) => setPassword(e.target.value)} minLength={6} required />
-          <button type="submit" className="btn" disabled={loading}>
+          <input type="password" className="input-neon" placeholder="Password (min 6 characters)" value={password}
+            onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+          <button type="submit" className="btn-primary btn-block" disabled={loading}>
             {loading ? "Creating account…" : "Sign up"}
           </button>
         </form>
-        {error && <p className="error">{error}</p>}
-        {notice && <p className="hint">{notice}</p>}
-        <p className="hint">Have an account? <Link href="/login">Log in</Link></p>
+        {error && <p className="form-error">{error}</p>}
+        <p className="form-hint">Already registered? <Link href="/login">Login</Link></p>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Server-only client: the service-role key bypasses RLS. Never import this in client code.
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -24,7 +23,6 @@ export async function GET(request) {
     .maybeSingle();
 
   if (error) {
-    console.error("resolve lookup failed:", error);
     return NextResponse.json({ error: "Lookup failed" }, { status: 500 });
   }
   if (!data) {

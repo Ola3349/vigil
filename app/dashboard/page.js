@@ -28,41 +28,64 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
+    let mounted = true;
+
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
-        return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        if (!session) {
+          router.push("/login");
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("visits")
+          .select(`
+            id, created_at, latitude, longitude, accuracy,
+            ip, user_agent, timezone,
+            urls ( short_code, destination_url )
+          `)
+          .order("created_at", { ascending: false });
+
+        if (!mounted) return;
+        if (error) setError(error.message);
+        else setRows(data || []);
+      } catch (e) {
+        // network blocked / offline / extension interference → show it, don't hang
+        if (mounted) setError(e?.message || "Failed to load visits.");
+      } finally {
+        if (mounted) setLoading(false); // EVERY path clears loading
       }
-
-      // RLS limits this to visits on the logged-in user's own links
-      const { data, error } = await supabase
-        .from("visits")
-        .select(`
-          id, created_at, latitude, longitude, accuracy,
-          ip, user_agent, timezone,
-          urls ( short_code, destination_url )
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) setError(error.message);
-      else setRows(data || []);
-      setLoading(false);
     })();
+
+    // absolute safety net: never spin forever
+    const failsafe = setTimeout(() => {
+      if (!mounted) return;
+      setLoading(false);
+      router.push("/login");
+    }, 6000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(failsafe);
+    };
   }, [router]);
 
   if (loading) {
-    return <div className="container"><p>Loading dashboard…</p></div>;
+    return <div className="page-shell"><p className="loading-text">Loading dashboard…</p></div>;
   }
 
   return (
-    <div className="container">
-      <div className="card">
-        <h1>Visit Dashboard</h1>
-        {error && <p className="error">{error}</p>}
-        {rows.length === 0 ? (
-          <p style={{ marginTop: 16 }}>No visits recorded yet.</p>
-        ) : (
+    <div className="page-shell">
+      <div className="panel panel-wide">
+        <h1 className="panel-title">Visitor Intelligence</h1>
+        <p className="panel-sub">All verification events captured across your gated links.</p>
+        {error && <p className="form-error">{error}</p>}
+        {rows.length === 0 && !error ? (
+          <p className="empty-text">No visits recorded yet.</p>
+        ) : rows.length > 0 ? (
           <div className="table-wrap" style={{ marginTop: 16 }}>
             <table>
               <thead>
@@ -97,7 +120,7 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

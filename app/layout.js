@@ -2,8 +2,8 @@ import "./globals.css";
 import Nav from "../components/Nav";
 
 export const metadata = {
-  title: "Location Shortener",
-  description: "URL shortener with location tracking",
+  title: "HEIMDELL",
+  description: "Cyber link intelligence — verification-gated URL shortening",
 };
 
 export default function RootLayout({ children }) {
