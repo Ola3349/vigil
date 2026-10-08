@@ -62,36 +62,11 @@ h2 { font-size: 18px; margin-bottom: 12px; }
   font-family: var(--font-display); font-weight: 800;
   font-size: 19px; letter-spacing: 0.12em; color: #fff;
 }
-.nav-capsule {
-  display: none; align-items: center; gap: 4px; padding: 6px;
-  border-radius: 999px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-}
-.nav-link {
-  position: relative; padding: 8px 18px; border-radius: 999px;
-  font-family: var(--font-body);
-  font-size: 13.5px; font-weight: 500; color: #cbd5e1;
-  text-decoration: none; transition: color .2s;
-}
-.nav-link:hover { color: #fff; text-decoration: none; }
-.nav-link.active { color: var(--accent); }
-.nav-link.active::after {
-  content: ""; position: absolute; left: 50%; transform: translateX(-50%);
-  bottom: 2px; width: 16px; height: 2px; border-radius: 2px;
-  background: var(--accent); box-shadow: 0 0 8px rgba(0,255,157,0.8);
-}
 .nav-actions { display: flex; align-items: center; gap: 10px; }
 .cta-explore { display: none; }
-.menu-toggle { display: none; }
 
 @media (min-width: 768px) {
-  .nav-capsule { display: flex; }
   .cta-explore { display: inline-flex; }
-}
-@media (max-width: 767px) {
-  .menu-toggle { display: inline-flex; }
 }
 
 .icon-orb {
@@ -104,26 +79,37 @@ h2 { font-size: 18px; margin-bottom: 12px; }
 }
 .icon-orb:hover { color: var(--accent); border-color: rgba(0,255,157,0.4); }
 
-/* Mobile drawer */
-.mobile-drawer {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 40;
-  padding: 100px 26px 28px;
+/* hamburger visible on ALL screen sizes */
+.menu-toggle { display: inline-flex; }
+
+/* ==========================================================
+   Hamburger dropdown (Login/Sign up or Dashboard/Logout)
+   ========================================================== */
+.menu-dropdown {
+  position: fixed; top: 84px; right: 26px; z-index: 60;
+  min-width: 190px; padding: 8px;
   background: rgba(4, 10, 7, 0.96);
   backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-  border-bottom: 1px solid var(--glass-border);
-  transform: translateY(-110%);
-  transition: transform .35s ease;
-  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid rgba(0, 255, 157, 0.25);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  display: flex; flex-direction: column; gap: 2px;
+  opacity: 0; transform: translateY(-8px); pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
 }
-.mobile-drawer.open { transform: translateY(0); }
-.drawer-link {
+.menu-dropdown.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.dd-link {
   font-family: var(--font-body);
-  padding: 12px 10px; border-radius: 10px;
-  color: #e2e8f0; font-size: 15px; font-weight: 500;
+  padding: 11px 14px; border-radius: 9px;
+  color: #e2e8f0; font-size: 14px; font-weight: 500;
   text-decoration: none; background: none; border: none;
-  text-align: left; cursor: pointer;
+  text-align: left; cursor: pointer; width: 100%;
 }
-.drawer-link:hover { background: rgba(16,185,129,0.08); color: var(--accent); text-decoration: none; }
+.dd-link:hover { background: rgba(16,185,129,0.08); color: var(--accent); text-decoration: none; }
+
+@media (max-width: 767px) {
+  .menu-dropdown { top: 76px; right: 18px; }
+}
 
 /* ==========================================================
    Hero
@@ -362,7 +348,7 @@ h2 { font-size: 18px; margin-bottom: 12px; }
 .status-badge .pulse-dot { width: 6px; height: 6px; }
 
 /* ==========================================================
-   Inner pages (login / signup / dashboard)
+   Inner pages (login / signup / dashboard / reset-password)
    ========================================================== */
 .page-shell {
   min-height: 100vh;
@@ -638,3 +624,33 @@ td.truncate { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
   text-decoration: underline;
 }
 .link-btn:hover { color: #fff; }
+
+/* ==========================================================
+   Delete link button + settings success
+   ========================================================== */
+.mini-right {
+  display: flex; align-items: center; gap: 10px;
+  min-width: 0;
+}
+.btn-delete {
+  padding: 4px 12px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #f87171;
+  font-family: var(--font-body);
+  font-size: 11.5px; font-weight: 600;
+  cursor: pointer; flex: none;
+  transition: box-shadow .2s, background .2s, color .2s;
+}
+.btn-delete:hover { box-shadow: 0 0 12px rgba(248, 113, 113, 0.3); }
+.btn-delete.confirm {
+  background: rgba(248, 113, 113, 0.15);
+  border-color: #f87171;
+  color: #fff;
+}
+
+.success-text {
+  color: var(--accent);
+  font-size: 13px;
+  margin-top: 10px;
+}

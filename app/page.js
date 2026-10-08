@@ -48,25 +48,77 @@ export default function Home() {
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [myLinks, setMyLinks] = useState([]);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const confirmTimer = useRef(null);
 
   const heroRef = useRef(null);
   const maskRef = useRef(null);
   const haloRef = useRef(null);
   const canvasRef = useRef(null);
 
+  /* ---------- auth (with failsafe so Loading… can never hang) ---------- */
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    let mounted = true;
+    const failsafe = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 4000);
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
+        setSession(data.session);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (!mounted) return;
+      setSession(s);
       setLoading(false);
     });
+
+    return () => {
+      mounted = false;
+      clearTimeout(failsafe);
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
     if (session) fetchMyLinks();
   }, [session]);
 
+  /* ---------- delete a link (two-click confirm) ---------- */
+  async function handleDelete(code) {
+    if (confirmDelete !== code) {
+      // first click: arm the confirm, auto-disarm after 3s
+      setConfirmDelete(code);
+      clearTimeout(confirmTimer.current);
+      confirmTimer.current = setTimeout(() => setConfirmDelete(null), 3000);
+      return;
+    }
+    // second click: actually delete
+    clearTimeout(confirmTimer.current);
+    setConfirmDelete(null);
+
+    const { error: deleteError } = await supabase
+      .from("urls")
+      .delete()
+      .eq("short_code", code);
+
+    if (deleteError) return setError(deleteError.message);
+
+    setMyLinks((prev) => prev.filter((l) => l.short_code !== code));
+    // if the just-created result box points at the deleted link, clear it
+    setShortUrl((prev) => (prev.endsWith(`/${code}`) ? "" : prev));
+  }
+
   /* ---------- spotlight mask-reveal engine (60fps lerp) ---------- */
   useEffect(() => {
+    if (loading) return;
     const hero = heroRef.current;
     const maskLayer = maskRef.current;
     const halo = haloRef.current;
@@ -135,10 +187,11 @@ export default function Home() {
       hero.removeEventListener("mouseleave", onLeave);
       hero.removeEventListener("touchmove", onTouch);
     };
-  }, []);
+  }, [loading]);
 
   /* ---------- floating particles canvas ---------- */
   useEffect(() => {
+    if (loading) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const c2d = canvas.getContext("2d");
@@ -188,16 +241,18 @@ export default function Home() {
     resize();
     init();
     raf = requestAnimationFrame(loop);
-    window.addEventListener("resize", () => {
+
+    const onResize = () => {
       resize();
       init();
-    });
+    };
+    window.addEventListener("resize", onResize);
 
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [loading]);
 
   /* ---------- shorten logic ---------- */
   async function fetchMyLinks() {
@@ -322,7 +377,16 @@ export default function Home() {
                         <a href={`/${l.short_code}`} target="_blank" rel="noreferrer">
                           /{l.short_code}
                         </a>
-                        <span className="dest" title={l.destination_url}>{l.destination_url}</span>
+                        <div className="mini-right">
+                          <span className="dest" title={l.destination_url}>{l.destination_url}</span>
+                          <button
+                            className={`btn-delete${confirmDelete === l.short_code ? " confirm" : ""}`}
+                            onClick={() => handleDelete(l.short_code)}
+                            aria-label={`Delete link /${l.short_code}`}
+                          >
+                            {confirmDelete === l.short_code ? "Confirm?" : "Delete"}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

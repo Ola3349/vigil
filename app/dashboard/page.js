@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const loadingRef = useRef(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function Dashboard() {
         if (!mounted) return;
 
         if (!session) {
+          // genuinely not logged in → redirect is correct here
           router.push("/login");
           return;
         }
@@ -53,18 +55,22 @@ export default function Dashboard() {
         if (error) setError(error.message);
         else setRows(data || []);
       } catch (e) {
-        // network blocked / offline / extension interference → show it, don't hang
         if (mounted) setError(e?.message || "Failed to load visits.");
       } finally {
-        if (mounted) setLoading(false); // EVERY path clears loading
+        if (mounted) {
+          loadingRef.current = false; // tells the failsafe to stand down
+          setLoading(false);          // every path clears loading
+        }
       }
     })();
 
-    // absolute safety net: never spin forever
+    // Safety net: ONLY stops the spinner if loading is somehow still true
+    // after 6s. It NEVER redirects — a logged-in user must never be
+    // pushed to /login by a timer.
     const failsafe = setTimeout(() => {
-      if (!mounted) return;
-      setLoading(false);
-      router.push("/login");
+      if (mounted && loadingRef.current) {
+        setLoading(false);
+      }
     }, 6000);
 
     return () => {

@@ -7,7 +7,7 @@ import { supabase } from "../lib/supabaseClient";
 import { sfx } from "../lib/sound";
 
 // Top-level pages that SHOULD show the nav
-const KNOWN_ROUTES = ["login", "signup", "dashboard", "reset-password"];
+const KNOWN_ROUTES = ["login", "signup", "dashboard", "reset-password", "settings"];
 
 function Emblem() {
   return (
@@ -145,6 +145,7 @@ export default function Nav() {
         {!loading && session ? (
           <>
             <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="dd-link">Dashboard</Link>
+            <Link href="/settings" onClick={() => setMenuOpen(false)} className="dd-link">Settings</Link>
             <button onClick={logout} className="dd-link">Logout</button>
           </>
         ) : (
