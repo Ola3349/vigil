@@ -267,17 +267,12 @@ function VigilLogo() {
 }
 
 // states: check | verifying | success | failed
-<<<<<<< HEAD
 function Widget({ state, onRetry, onVerify }) {
-=======
-function Widget({ state, onRetry }) {
->>>>>>> 644202f953bd86fcdc0dc0ff5ef096cbbbe4d348
   return (
     <div className="cf-widget" aria-live="polite">
       <div className="cf-widget-state">
         {state === "check" && (
           <>
-<<<<<<< HEAD
             <button
               type="button"
               className="cf-checkbox cf-checkbox-btn"
@@ -285,9 +280,6 @@ function Widget({ state, onRetry }) {
               onClick={onVerify || undefined}
               disabled={!onVerify}
             ></button>
-=======
-            <span className="cf-checkbox" aria-hidden="true"></span>
->>>>>>> 644202f953bd86fcdc0dc0ff5ef096cbbbe4d348
             <span className="cf-state-label">Verify you are human</span>
           </>
         )}
